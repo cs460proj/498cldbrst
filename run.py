@@ -9,7 +9,6 @@ from functools import partial
 import ipaddress
 import math
 import datetime
-import xxhash
 import queue
 import traceback
 from threading import Thread
@@ -303,7 +302,7 @@ def refresh_windows(windows):
     windows.main.noutrefresh()
     curses.doupdate()
 
-def print_callback(pkt):
+def pkt_callback(pkt):
     global pkt_queue
 
     pkt_queue.put_nowait(pkt)
@@ -399,10 +398,10 @@ def main(stdscr):
     thread2.start()
 
     capture = pyshark.LiveCapture(interface='ens33')
-    capture.apply_on_packets(print_callback)
+    capture.apply_on_packets(pkt_callback)
 
 def packet_lt(self, other):
-    return xxhash.xxh32(str(self).encode('utf-8')).digest() < xxhash.xxh32(str(other).encode('utf-8')).digest()
+    return self.sniff_time < other.sniff_time
 pyshark.packet.packet.Packet.__lt__ = packet_lt
 
 if __name__ == "__main__":
