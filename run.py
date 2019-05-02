@@ -14,13 +14,14 @@ import traceback
 from threading import Thread
 
 ascii_art = """\
- ██████╗██╗     ██████╗ ██████╗ ██████╗ ███████╗████████╗
-██╔════╝██║     ██╔══██╗██╔══██╗██╔══██╗██╔════╝╚══██╔══╝
-██║     ██║     ██║  ██║██████╔╝██████╔╝███████╗   ██║   
-██║     ██║     ██║  ██║██╔══██╗██╔══██╗╚════██║   ██║   
-╚██████╗███████╗██████╔╝██████╔╝██║  ██║███████║   ██║   
- ╚═════╝╚══════╝╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝   ╚═╝   
+██╗   ██╗███████╗██╗     ██╗    ██╗
+██║   ██║██╔════╝██║     ██║    ██║
+██║   ██║█████╗  ██║     ██║ █╗ ██║
+╚██╗ ██╔╝██╔══╝  ██║     ██║███╗██║
+ ╚████╔╝ ██║     ███████╗╚███╔███╔╝
+  ╚═══╝  ╚═╝     ╚══════╝ ╚══╝╚══╝ 
 """
+
 ascii_art_len = len(ascii_art.split('\n')[0])+1
 
 TERA = 1000000000000
@@ -34,6 +35,7 @@ SPACE_BETWEEN = 2 # lines each row takes up
 
 PACKET_MAX = 3000
 
+# Probably too many globals, however passing variables across threads can be a hassle
 pkts = deque(PACKET_MAX*[0], PACKET_MAX)
 nlargest = []
 totals_src = {}
@@ -295,6 +297,7 @@ def show_ip_details(windows, ip):
 
         windows.main.addstr(max_y-PADDING*2, bar_x, proto_sorted[x][0][:bar_width])
 
+# Refresh every single window, used after draw loop
 def refresh_windows(windows):
     windows.header.noutrefresh()
     windows.asciiart.noutrefresh()
@@ -302,14 +305,13 @@ def refresh_windows(windows):
     windows.main.noutrefresh()
     curses.doupdate()
 
+# Callback for the main packet loop
 def pkt_callback(pkt):
     global pkt_queue
 
     pkt_queue.put_nowait(pkt)
-#    if pkt.highest_layer not in layers:
-#        win.addstr(count,0,pkt.highest_layer)
-#        win.refresh()
 
+# Base window class, later populated by more windows
 class Windows:
     def __init__(self, stdscr):
         self.stdscr = stdscr
@@ -320,6 +322,7 @@ class Stats:
         self.total_transfer = 0 # in bytes
         self.total_packets = 0
 
+# Handle window resizing gracefully
 def window_resize(windows):
     windows.stdscr.clear()
     (max_y, max_x) = windows.stdscr.getmaxyx()
@@ -349,6 +352,7 @@ def screen_draw(windows, stats):
     level = 0
     most_recent_highlight = 0
 
+    # Main draw loop
     while True:
         ch = windows.stdscr.getch()
         do_clear = False
@@ -391,7 +395,8 @@ def main(stdscr):
 
     stats = Stats()
     update_headers(windows, stats)
-    
+   
+    # Set up threads for all 3 tasks: Screen draw, packet structure maintain, packet capture 
     thread1 = Thread(target=packet_maintain, args = (windows, stats))
     thread2 = Thread(target=screen_draw, args = (windows, stats))
     thread1.start()
